@@ -2,7 +2,7 @@
     "rewrites": [ 
         { 
             "source": "/api/:path*", 
-            "destination": "https://https://servicestech-fs.onrender.com/api/:path*" 
+            "destination": "https://servicestech-fs.onrender.com/api/:path*" 
         }, 
         { 
             "source": "/(.*)",
