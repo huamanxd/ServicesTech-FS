@@ -176,7 +176,6 @@ jobs:
           SSH=(ssh -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=yes)
           SCP=(scp -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=yes)
           "${SSH[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
-          "${SCP[@]}" compose.deploy.yml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/compose.deploy.yml"
           # .env pertenece al servidor y NUNCA se reemplaza desde GitHub Actions.
           "${SSH[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && test -f .env && git pull --ff-only origin main && sudo -n docker compose build backend && sudo -n docker compose build frontend && sudo -n docker compose up -d --no-build --wait && sudo -n docker compose ps"
 
