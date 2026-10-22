@@ -17,12 +17,18 @@ val mapstructVersion = "1.7.0.Beta1"
 val lombokVersion = "1.18.30"
 val lombokMapstructBindingVersion = "0.2.0"
 //cierre de codigo para libreria mapstruck y lombok
+val jwtVersion = "0.13.0"
+//Agregando libreria para JWT
 
 repositories {
 	mavenCentral()
 }
 
 dependencies {
+	implementation("io.jsonwebtoken:jjwt-api:${jwtVersion}")//5taAgregando jwt-api para la implementacion de JWT
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:${jwtVersion}")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:${jwtVersion}")
+
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")//1era libreria para el spring y el rest
 	implementation("org.springframework.boot:spring-boot-starter-validation")//2da libreria para validar
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")

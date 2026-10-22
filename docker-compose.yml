@@ -29,6 +29,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Copia .env.example a .env y define DB_PASSWORD}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL en .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?Configura APP_JWT_SECRET en .env}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost:5174}
       PORT: '8080'
     depends_on:
