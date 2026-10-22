@@ -177,3 +177,4 @@ jobs:
           # .env pertenece al servidor y NUNCA se reemplaza desde GitHub Actions.
           "${SSH[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && test -f .env && git pull --ff-only origin main && sudo -n docker compose build backend && sudo -n docker compose build frontend && sudo -n docker compose up -d --no-build --wait && sudo -n docker compose ps"
 
+
