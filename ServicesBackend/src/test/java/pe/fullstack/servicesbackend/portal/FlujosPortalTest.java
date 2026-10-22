@@ -16,6 +16,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import pe.fullstack.servicesbackend.portal.servicio.JwtServicio;
+import java.util.Base64;
+import java.nio.charset.StandardCharsets;
+
 /** Pruebas sin conexión a PostgreSQL: las consultas se simulan con Mockito. */
 class FlujosPortalTest {
  private UsuarioRepositorio usuarios;
@@ -23,11 +27,25 @@ class FlujosPortalTest {
  private IdentidadServicio identidad;
  private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
 
- @BeforeEach void preparar() {
-  usuarios=mock(UsuarioRepositorio.class);
-  sesiones=mock(SesionRepositorio.class);
-  identidad=new IdentidadServicio(usuarios,sesiones,encoder);
- }
+ @BeforeEach
+void preparar() {
+    usuarios = mock(UsuarioRepositorio.class);
+    sesiones = mock(SesionRepositorio.class);
+
+    String clavePrueba = Base64.getEncoder().encodeToString(
+        "0123456789abcdef0123456789abcdef"
+            .getBytes(StandardCharsets.UTF_8)
+    );
+
+    JwtServicio jwt = new JwtServicio(clavePrueba);
+
+    identidad = new IdentidadServicio(
+        usuarios,
+        sesiones,
+        encoder,
+        jwt
+    );
+}
 
  private Peticiones.Registro registro() {
   return new Peticiones.Registro("Ana", "Rojas", "ANA@Ejemplo.com", "987654321", "ClaveRobusta!2026");

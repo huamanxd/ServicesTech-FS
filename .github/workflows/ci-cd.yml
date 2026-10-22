@@ -13,6 +13,8 @@ permissions:
 
 jobs:
   backend-test:
+  - name: Preparar JWT de prueba
+    run: echo "APP_JWT_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
     name: Backend - JDK 21 y pruebas Gradle
     runs-on: ubuntu-latest
     services:
@@ -73,6 +75,7 @@ jobs:
           # Sobrescribe las claves publicas de desarrollo en CI.
           sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=ci_password_only/' .env
           sed -i 's/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=ci_admin_password_2026/' .env
+          echo "APP_JWT_SECRET=$(openssl rand -base64 32)" >> .env
       - name: Compilar e iniciar los 3 contenedores
         run: docker compose up -d --build --wait --wait-timeout 300
       - name: Comprobar catálogo, admin, cliente y rutas React
