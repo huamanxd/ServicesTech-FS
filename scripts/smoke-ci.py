@@ -20,8 +20,10 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123456789')
 SUFIJO = f'{random.randint(0, 99_999_999):08d}'
 
 
-def api(method, path, body=None, token=None, expected=200, raw_body=None):
+def api(method, path, body=None, token=None, expected=200, raw_body=None, origin=None):
     headers = {'Accept': 'application/json'}
+    if origin:
+        headers['Origin'] = origin
     if token:
         headers['Authorization'] = 'Bearer ' + token
     data = None
@@ -52,7 +54,9 @@ ok('catálogo y prioridades cargados por Flyway')
 # 2. Seguridad básica -------------------------------------------------------------
 api('GET', '/api/admin/dashboard', expected=401)
 api('POST', '/api/auth/cliente', raw_body='{"email":', expected=400)
-admin = api('POST', '/api/auth/personal', {'email': ADMIN_EMAIL, 'clave': ADMIN_PASSWORD})
+# El navegador envía Origin en los POST: a través del proxy no debe disparar CORS.
+admin = api('POST', '/api/auth/personal', {'email': ADMIN_EMAIL, 'clave': ADMIN_PASSWORD},
+            origin=os.environ.get('ORIGIN', BASE))
 assert 'ADMINISTRADOR' in admin['usuario']['roles']
 A = admin['token']
 ok('login del administrador; 401 sin token y 400 con JSON inválido')

@@ -33,11 +33,17 @@ public class Seguridad {
         return new BCryptPasswordEncoder();
     }
 
-    /** Orígenes exactos separados por coma. Con el proxy de Vite, Nginx o Vercel no interviene CORS. */
+    /**
+     * Orígenes permitidos separados por coma (FRONTEND_ORIGINS). Admite comodines, por ejemplo
+     * https://servicestech-*.vercel.app para las vistas previas de Vercel. Nunca se usa "*".
+     * Con Vite y Nginx la cabecera Origin no llega al backend; con Vercel sí, por eso en Render
+     * hay que declarar el dominio de Vercel.
+     */
     @Bean
     CorsConfigurationSource corsConfigurationSource(@Value("${app.frontend-origins:}") String origenes) {
         CorsConfiguration c = new CorsConfiguration();
-        c.setAllowedOrigins(Arrays.stream(origenes.split(",")).map(String::strip).filter(s -> !s.isEmpty()).distinct().toList());
+        c.setAllowedOriginPatterns(Arrays.stream(origenes.split(",")).map(String::strip)
+                .filter(s -> !s.isEmpty() && !s.equals("*")).distinct().toList());
         c.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         c.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         c.setMaxAge(3600L);

@@ -13,6 +13,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -23,7 +24,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "app.jwt.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
         "app.admin.email=admin-pruebas@servicestech.test",
-        "app.admin.password=AdminPruebas2026!"})
+        "app.admin.password=AdminPruebas2026!",
+        "app.frontend-origins=https://servicestech-*.vercel.app,http://localhost:5173"})
 @AutoConfigureMockMvc
 class FlujoApiTest {
 
@@ -69,6 +71,23 @@ class FlujoApiTest {
         consultar("/api/tecnico/ordenes", cliente).andExpect(status().isForbidden());
         consultar("/api/admin/ordenes/abc/historial", login("personal", "admin-pruebas@servicestech.test", "AdminPruebas2026!"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void corsSoloParaOrigenesDeclarados() throws Exception {
+        String cuerpo = "{\"email\":\"nadie@servicestech.test\",\"clave\":\"x\"}";
+        // Origen permitido por patrón (vista previa de Vercel): llega al controlador (401 = credenciales).
+        mvc.perform(post("/api/auth/personal").header("Origin", "https://servicestech-abc123.vercel.app")
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://servicestech-abc123.vercel.app"));
+        // Origen no declarado: Spring lo rechaza antes del controlador.
+        mvc.perform(post("/api/auth/personal").header("Origin", "https://sitio-ajeno.example")
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isForbidden());
+        // Sin Origin (proxy de Vite/Nginx): no aplica CORS.
+        mvc.perform(post("/api/auth/personal").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
