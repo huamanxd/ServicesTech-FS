@@ -1,5 +1,8 @@
-name: ServicesTech - CI / GitHub Packages / CD
+name: ServicesTech - CI/CD
 
+# CI: pruebas de backend y frontend + prueba E2E con Docker Compose.
+# CD: imágenes en GitHub Packages (GHCR) y despliegue en Render. Vercel despliega el frontend
+#     con su integración de Git (ver README, sección Despliegue).
 on:
   push:
     branches: [main]
@@ -11,9 +14,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-test:
-    name: Backend - JDK 21 y pruebas Gradle
+    name: Backend - Java 21, Gradle y PostgreSQL
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -40,58 +47,66 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Preparar JWT de prueba
-        run: echo "APP_JWT_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
-      - name: Compilar y probar Spring Boot
+      - name: Compilar y probar (unitarias + integración con PostgreSQL)
         working-directory: ServicesBackend
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon clean test
+      - name: Reporte de pruebas
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-pruebas-backend
+          path: ServicesBackend/build/reports/tests/test
 
   frontend-test:
-    name: Frontend - Node 22 y pruebas React
+    name: Frontend - Node 22, lint, pruebas y build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ServicesFrontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Instalar y verificar frontend
-        working-directory: ServicesFrontend
-        run: |
-          npm install --no-audit --no-fund
-          npm test
-          npm run build
+          cache: npm
+          cache-dependency-path: ServicesFrontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
 
   docker-smoke:
-    name: Integración - Docker Compose y roles
+    name: Integración - Docker Compose y flujo completo
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test]
     steps:
       - uses: actions/checkout@v4
-      - name: Preparar entorno aislado de CI
+      - name: Preparar .env efímero de CI
         run: |
           cp .env.example .env
-          # Sobrescribe las claves publicas de desarrollo en CI.
           sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=ci_password_only/' .env
           sed -i 's/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=ci_admin_password_2026/' .env
-          echo "APP_JWT_SECRET=$(openssl rand -base64 32)" >> .env
-      - name: Compilar e iniciar los 3 contenedores
+          sed -i "s|^APP_JWT_SECRET=.*|APP_JWT_SECRET=$(openssl rand -base64 32)|" .env
+      - name: Construir e iniciar los 3 contenedores
         run: docker compose up -d --build --wait --wait-timeout 300
-      - name: Comprobar catálogo, admin, cliente y rutas React
+      - name: Prueba de humo (cliente -> admin -> técnico -> calificación -> dashboards)
         env:
+          BASE_URL: http://127.0.0.1:8088
           ADMIN_EMAIL: admin@admin.com
           ADMIN_PASSWORD: ci_admin_password_2026
+          CHECK_SPA: '1'
         run: python3 scripts/smoke-ci.py
       - name: Diagnóstico si falla
         if: failure()
-        run: docker compose ps && docker compose logs --no-color --tail 150
-      - name: Limpiar recursos efímeros de CI
+        run: docker compose ps && docker compose logs --no-color --tail 200
+      - name: Limpiar
         if: always()
         run: docker compose down -v --remove-orphans
 
   publish:
-    name: GHCR - ${{ matrix.part }}
+    name: GHCR - imagen ${{ matrix.parte }}
     runs-on: ubuntu-latest
     needs: [docker-smoke]
     if: github.event_name != 'pull_request'
@@ -102,14 +117,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - part: backend
-            context: ./ServicesBackend
-          - part: frontend
-            context: ./ServicesFrontend
+          - parte: backend
+            contexto: ./ServicesBackend
+          - parte: frontend
+            contexto: ./ServicesFrontend
     steps:
       - uses: actions/checkout@v4
-      - name: Nombre válido para GHCR (minúsculas)
-        id: names
+      - name: Propietario en minúsculas (requisito de GHCR)
+        id: nombres
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -120,39 +135,67 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/${{ steps.names.outputs.owner }}/servicestech-${{ matrix.part }}
+          images: ghcr.io/${{ steps.nombres.outputs.owner }}/servicestech-${{ matrix.parte }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=ServicesTech ${{ matrix.part }} Java Spring Boot / React
+            org.opencontainers.image.description=ServicesTech ${{ matrix.parte }}
           tags: |
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,format=short
             type=ref,event=tag
-      - name: Construir y publicar paquete Docker
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.context }}/Dockerfile
+          context: ${{ matrix.contexto }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=servicestech-${{ matrix.part }}
-          cache-to: type=gha,mode=max,scope=servicestech-${{ matrix.part }}
+          cache-from: type=gha,scope=servicestech-${{ matrix.parte }}
+          cache-to: type=gha,mode=max,scope=servicestech-${{ matrix.parte }}
 
-  deploy:
-    name: CD - actualizar VPS por SSH
+  deploy-render:
+    name: CD - Render (backend)
     runs-on: ubuntu-latest
-    needs: [publish]
-    # Solo si el dueño habilita DEPLOY_ENABLED=true y configura los secretos de despliegue.
+    needs: [docker-smoke]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      # Opción A (recomendada): Auto-Deploy = "After CI checks pass" en Render (render.yaml: checksPass).
+      #   No hace falta ningún secreto: Render despliega cuando este workflow termina en verde.
+      # Opción B: Auto-Deploy = Off y el secreto RENDER_DEPLOY_HOOK_URL (Settings > Deploy Hook en Render).
+      - name: Disparar deploy hook (si está configurado)
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "Sin RENDER_DEPLOY_HOOK_URL: Render despliega solo con Auto-Deploy 'After CI checks pass'."
+            exit 0
+          fi
+          curl --fail --silent --show-error -X POST "$HOOK" > /dev/null
+          echo "Despliegue solicitado a Render."
+      - name: Esperar a que el backend responda (si se definió RENDER_BACKEND_URL)
+        env:
+          URL: ${{ vars.RENDER_BACKEND_URL }}
+        run: |
+          if [ -z "$URL" ]; then echo "Variable RENDER_BACKEND_URL no definida: se omite la verificación."; exit 0; fi
+          for i in $(seq 1 40); do
+            if curl --fail --silent "$URL/actuator/health" | grep -q '"UP"'; then echo "Backend UP"; exit 0; fi
+            sleep 15
+          done
+          echo "El backend no respondió UP en 10 minutos"; exit 1
+
+  deploy-vps:
+    name: CD - servidor propio por SSH (Docker Compose)
+    runs-on: ubuntu-latest
+    needs: [docker-smoke]
+    # Solo si la variable de repositorio DEPLOY_ENABLED=true y existen los secretos DEPLOY_*.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
     environment: production
     concurrency:
       group: production-servicestech
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      - name: Desplegar imágenes desde GHCR al servidor
+      - name: Actualizar el servidor (git pull + docker compose build/up)
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -168,15 +211,11 @@ jobs:
           : "${DEPLOY_SSH_PRIVATE_KEY:?Configura DEPLOY_SSH_PRIVATE_KEY}"
           : "${DEPLOY_KNOWN_HOSTS:?Configura DEPLOY_KNOWN_HOSTS}"
           [[ "$DEPLOY_PATH" =~ ^/[a-zA-Z0-9/_-]+$ ]] || { echo 'DEPLOY_PATH debe ser una ruta absoluta sin espacios'; exit 1; }
-          mkdir -p "$HOME/.ssh"
-          chmod 700 "$HOME/.ssh"
+          mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
-          SSH=(ssh -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=yes)
-          SCP=(scp -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=yes)
-          "${SSH[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
-          # .env pertenece al servidor y NUNCA se reemplaza desde GitHub Actions.
-          "${SSH[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && test -f .env && git pull --ff-only origin main && sudo -n docker compose build backend && sudo -n docker compose build frontend && sudo -n docker compose up -d --no-build --wait && sudo -n docker compose ps"
-
-
+          # El .env con secretos vive solo en el servidor y nunca se reemplaza desde GitHub.
+          # El servidor debe tener APP_JWT_SECRET en su .env (ya era obligatorio en la versión anterior).
+          ssh -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_PATH' && test -f .env && git pull --ff-only origin main && sudo -n docker compose build backend frontend && sudo -n docker compose up -d --no-build --wait && sudo -n docker compose ps"

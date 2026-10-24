@@ -5,48 +5,63 @@ plugins {
 }
 
 group = "pe.fullstack"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
-//implementando codigo variable para mapstruc y lombok
+
 val mapstructVersion = "1.7.0.Beta1"
-val lombokVersion = "1.18.30"
+val lombokVersion = "1.18.34"
 val lombokMapstructBindingVersion = "0.2.0"
-//cierre de codigo para libreria mapstruck y lombok
 val jwtVersion = "0.13.0"
-//Agregando libreria para JWT
+val springdocVersion = "3.0.0"
 
 repositories {
 	mavenCentral()
 }
 
 dependencies {
-	implementation("io.jsonwebtoken:jjwt-api:${jwtVersion}")//5taAgregando jwt-api para la implementacion de JWT
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:${jwtVersion}")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:${jwtVersion}")
-
-	implementation("org.springframework.boot:spring-boot-starter-webmvc")//1era libreria para el spring y el rest
-	implementation("org.springframework.boot:spring-boot-starter-validation")//2da libreria para validar
-	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	// Web, validación, seguridad y persistencia
+	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-security")
-	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.flywaydb:flyway-database-postgresql")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	runtimeOnly("org.postgresql:postgresql")
+
+	// JWT firmado (HS256) + sesiones revocables en la tabla "sesiones"
+	implementation("io.jsonwebtoken:jjwt-api:$jwtVersion")
+	runtimeOnly("io.jsonwebtoken:jjwt-impl:$jwtVersion")
+	runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jwtVersion")
+
+	// Documentación OpenAPI 3 + Swagger UI (/swagger-ui.html, /v3/api-docs)
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
+
+	// Lombok (entidades y servicios) + MapStruct (entidad -> DTO)
+	compileOnly("org.projectlombok:lombok:$lombokVersion")
+	implementation("org.mapstruct:mapstruct:$mapstructVersion")
+	annotationProcessor("org.projectlombok:lombok:$lombokVersion")
+	annotationProcessor("org.mapstruct:mapstruct-processor:$mapstructVersion")
+	annotationProcessor("org.projectlombok:lombok-mapstruct-binding:$lombokMapstructBindingVersion")
+	testCompileOnly("org.projectlombok:lombok:$lombokVersion")
+	testAnnotationProcessor("org.projectlombok:lombok:$lombokVersion")
+
+	// Pruebas
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-security-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
 
-	implementation("org.mapstruct:mapstruct:${mapstructVersion}")//3era libreria implementando mapstruck
-	implementation("org.projectlombok:lombok:${lombokVersion}")//4ta libreria implementando lombok
-	annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
-	annotationProcessor("org.projectlombok:lombok:${lombokVersion}")
-	annotationProcessor("org.projectlombok:lombok-mapstruct-binding:${lombokMapstructBindingVersion}")
-
+tasks.withType<JavaCompile> {
+	options.compilerArgs.addAll(listOf("-parameters", "-Amapstruct.defaultComponentModel=spring"))
 }
 
 tasks.withType<Test> {
