@@ -1,0 +1,15 @@
+# Finales de línea LF en el repositorio para todos los archivos de texto.
+# Evita que un checkout en Windows marque todo como modificado y que gradlew falle en Docker/Linux.
+* text=auto eol=lf
+
+# Scripts de Windows con CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binarios
+*.jar binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.docx binary
+*.pdf binary

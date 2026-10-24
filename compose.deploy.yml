@@ -1,5 +1,9 @@
-# CD: descarga imagenes precompiladas de GHCR, sin compilar en el servidor.
+# Servidor propio con Docker: usa las imágenes que publica el CI en GitHub Packages (GHCR),
+# sin compilar en el servidor.
+#   cp .env.production.example .env   (y edita los valores)
+#   docker compose -f compose.deploy.yml up -d --pull always --wait
 name: servicestech
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -7,7 +11,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-servicestech}
       POSTGRES_USER: ${DB_USER:-servicestech}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env del servidor}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
     volumes:
       - datos_postgres:/var/lib/postgresql/data
     healthcheck:
@@ -23,12 +27,13 @@ services:
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-servicestech}
       DB_USER: ${DB_USER:-servicestech}
-      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env del servidor}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL en .env del servidor}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env del servidor}
-      APP_JWT_SECRET: ${APP_JWT_SECRET:?Configura APP_JWT_SECRET en .env}
-      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173}
-      PORT: '8080'
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL en .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?Define APP_JWT_SECRET en .env}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-}
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
+      PORT: "8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,7 +42,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 15
-      start_period: 50s
+      start_period: 60s
 
   frontend:
     image: ghcr.io/${GHCR_OWNER:?Define GHCR_OWNER en .env}/servicestech-frontend:${IMAGE_TAG:-main}

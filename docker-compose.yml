@@ -1,4 +1,8 @@
+# Desarrollo y demostración local: construye las 3 capas desde el código.
+#   cp .env.example .env && docker compose up -d --build --wait
+#   Web: http://localhost:8088   API: http://localhost:8080/swagger-ui.html
 name: ${COMPOSE_PROJECT_NAME:-servicestech}
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -6,7 +10,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-servicestech}
       POSTGRES_USER: ${DB_USER:-servicestech}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Copia .env.example a .env y define DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Copia .env.example a .env}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -21,17 +25,16 @@ services:
   backend:
     build:
       context: ./ServicesBackend
-      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-servicestech}
       DB_USER: ${DB_USER:-servicestech}
-      DB_PASSWORD: ${DB_PASSWORD:?Copia .env.example a .env y define DB_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:?Copia .env.example a .env}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL en .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env}
-      APP_JWT_SECRET: ${APP_JWT_SECRET:?Configura APP_JWT_SECRET en .env}
-      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost:5174}
-      PORT: '8080'
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?Define APP_JWT_SECRET en .env}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173}
+      PORT: "8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,12 +45,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 15
-      start_period: 50s
+      start_period: 60s
 
   frontend:
     build:
       context: ./ServicesFrontend
-      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       backend:
