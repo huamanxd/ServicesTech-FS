@@ -116,7 +116,7 @@ npm run dev                       # http://localhost:5173
 | `DATABASE_URL` | Alternativa | Formato `postgres://usuario:clave@host:puerto/base` (Render); se traduce a JDBC. |
 | `APP_JWT_SECRET` | Sí | Base64 de ≥ 32 bytes (`openssl rand -base64 32`). |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Recomendadas | Crean el primer administrador si el correo no existe (clave ≥ 12 caracteres). Nunca modifican una cuenta existente. |
-| `FRONTEND_ORIGINS` | En Render | Orígenes permitidos por CORS, separados por coma (ej. `https://servicestech.vercel.app`). |
+| `FRONTEND_ORIGINS` | En Render | Orígenes permitidos por CORS, separados por coma (ej. `https://servicestech.vercel.app`). También se acepta el nombre anterior `FRONTEND_ORIGIN`. |
 | `APP_JWT_HOURS` | No | Duración de la sesión (8 h por defecto). |
 | `API_DOCS_ENABLED` | No | `false` oculta Swagger. |
 | `PORT` | No | Render la define automáticamente. |
@@ -202,5 +202,6 @@ Usa las imágenes que publica el CI. Para volver a una versión anterior cambia 
 | El backend no arranca: `APP_JWT_SECRET debe tener al menos 32 bytes` | Genera uno con `openssl rand -base64 32`. |
 | El admin no puede entrar | `ADMIN_*` solo se usan en el primer arranque: el administrador inicial nunca se actualiza. |
 | En Vercel la primera carga tarda o da timeout | El backend gratuito de Render estaba dormido; reintenta tras unos segundos. |
-| 403 «Invalid CORS request» en Render | Falta el dominio de Vercel en `FRONTEND_ORIGINS`. |
+| 403 «Invalid CORS request» con Vercel | En Render, `FRONTEND_ORIGINS` debe incluir el dominio exacto de Vercel (p. ej. `https://servicestech.vercel.app`; admite comodines como `https://servicestech-*.vercel.app` para las vistas previas). |
+| 403 «Invalid CORS request» con Docker (PC o servidor) | Imagen del frontend anterior a la corrección de `nginx.conf`: reconstruye con `docker compose up -d --build`. |
 | `./gradlew: /bin/sh^M` | Finales de línea CRLF: `.gitattributes` lo evita; vuelve a hacer checkout. |
