@@ -46,12 +46,12 @@ export default function Registro() {
 
   return (
     <main className="contenedor py-14">
-      <div className="form-card max-w-2xl">
+      <div className="form-card registro-card">
         <span className="etiqueta">REGISTRO DE CLIENTES</span>
         <h1 className="titulo-seccion mt-2">Crea tu cuenta</h1>
         <p className="texto-apoyo mb-7">Con tu cuenta podrás registrar solicitudes y seguir cada atención.</p>
         <form noValidate className="space-y-4" onSubmit={enviar}>
-          <CamposPersona valores={form} errores={errores} onCambio={cambiar} />
+          <CamposPersona valores={form} errores={errores} onCambio={cambiar} unaColumna />
           <Mensajes error={error} />
           <button type="submit" disabled={ocupado} className="btn btn-oscuro w-full justify-center">
             {ocupado ? 'Creando cuenta…' : 'Crear cuenta de cliente'}

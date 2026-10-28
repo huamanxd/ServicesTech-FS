@@ -11,10 +11,10 @@ const CAMPOS = [
 ]
 
 /** Campos de datos personales compartidos por el registro de clientes y el alta de personal. */
-export default function CamposPersona({ valores, errores, onCambio, prefijo = '' }) {
+export default function CamposPersona({ valores, errores, onCambio, prefijo = '', unaColumna = false  }) {
   return (
-    <div className="grid sm:grid-cols-2 gap-4">
-      {CAMPOS.map(([nombre, texto, tipo, autocompletar, maximo]) => (
+   <div className={unaColumna ? 'grid grid-cols-1 gap-4' : 'grid sm:grid-cols-2 gap-4'}>
+    {CAMPOS.map(([nombre, texto, tipo, autocompletar, maximo]) => (
         <Campo key={nombre} id={`${prefijo}${nombre}`} etiqueta={`${texto} *`} error={errores[nombre]}>
           <input
             id={`${prefijo}${nombre}`}
