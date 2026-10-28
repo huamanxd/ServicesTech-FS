@@ -122,7 +122,7 @@ function MenuPortalCliente() {
       {abierto && (
         <div
           id="menu-portal-cliente"
-          className="absolute z-50 right-0 top-full mt-2 w-48 bg-white border rounded-xl shadow-lg overflow-hidden"
+          className="absolute z-50 left-0 sm:left-auto sm:right-0 top-full mt-2 w-52 max-w-[calc(100vw-1.5rem)] bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden"
         >
           <Link className="block px-4 py-3 hover:bg-sky-50" to="/acceso/cliente" onClick={cerrar}>
             Iniciar sesión

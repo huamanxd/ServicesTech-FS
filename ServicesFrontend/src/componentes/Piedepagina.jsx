@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 export default function Piedepagina() {
+    const esLanding = useLocation().pathname === '/'
   return (
     <footer className="mx-auto w-full border-t border-gray-200 py-4 bg-white">
+      {esLanding && (
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 items-start py-3 px-4">
         <div>
           <h2 className="font-bold">Contacto</h2>
@@ -41,6 +43,7 @@ export default function Piedepagina() {
           </p>
         </div>
       </div>
+      )}
       <p className="container mx-auto pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
         Todos los derechos reservados © ServicesTech
       </p>
